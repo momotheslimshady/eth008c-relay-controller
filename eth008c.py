@@ -1,4 +1,7 @@
+
+
 """
+
 ETH008C Relay Controller - Version 1.0
 
 First working implementation of a Python controller for the
@@ -21,7 +24,7 @@ Main Features
 - Read the current relay state
 
 ETH008C Binary Command Reference
---------------------------------
+------------------------------
 HEX   DEC  Description
 0x10  16   Get module information
 0x20  32   Activate relay
@@ -48,8 +51,22 @@ Relay Timing
 The third byte of a command specifies the ON duration:
 
 0      -> Relay remains permanently in the selected state
-1-255  -> Pulsed mode in 100 ms intervals
+1–255  -> Pulsed mode in 100 ms intervals
          (1 = 100 ms, 255 = 25.5 seconds)
+
+Example Usage
+-------------
+Example connection and relay control:
+
+    eth008c = ETH008C("192.168.0.200", 17494)
+
+    eth008c.relais1 = True
+    eth008c.relais2 = False
+
+    states = eth008c.get_relay_states()
+    print(states)
+
+    eth008c.close()
 
 Configuration
 -------------
@@ -65,7 +82,6 @@ Python 3.x
 Standard libraries only:
 - socket
 """
-
 import socket
 
 
@@ -78,15 +94,18 @@ class ETH008C:
 
         self._connect()
         if self.password:
-            self._send_password(self.password)
+            self._send_password()
 
     def _connect(self):
         # Establishes a connection to the module.
+        
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.connect((self.host, self.port))
 
     def _send_password(self, password):
         # Sends the password to the module.
+        
+
         command = bytearray([0x79])
         for char in password:
             command.append(ord(char))
@@ -94,17 +113,15 @@ class ETH008C:
 
     def _send_command(self, command, data=None):
         # Sends a command to the module.
-
+        
         # Ensure command is a bytes object
-        if isinstance(command, int):
-            command = bytes([command])
-        elif not isinstance(command, bytes):
-            command = bytes(command)
+        if not isinstance(command, bytes):
+            command = bytes(command)  
 
         # Prepare data to send (if provided)
         if data is not None:
             if not isinstance(data, bytes):
-                data = bytes([data])
+                data = bytes([data])  
             command += data
 
         self._sock.sendall(command)
@@ -112,8 +129,7 @@ class ETH008C:
         return response
 
     def get_module_info(self):
-        # Send command 0x10 (16) and return the received 3 bytes
-        # (module ID, hardware version, firmware version)
+        # Send command 0x10 (16) and return the received 3 bytes (module ID, hardware version, firmware version)
         command = bytearray([0x10])
         response = self._send_command(command)
         return response
@@ -183,6 +199,7 @@ class ETH008C:
     def relais8(self, value):
         self._control_relay(8, value)
 
+
     def set_all_relays(self, states):
         # Check if states list has 8 elements (True/False)
         if not len(states) == 8:
@@ -209,27 +226,65 @@ class ETH008C:
         else:
             self.relays[relay_number - 1].turn_off_relay(relay_number)
 
-
 class Relay:
     def __init__(self, relay_number):
         self.relay_number = relay_number
 
     def turn_on_relay(self, relay_number, duration=0):
-        # Turns on the specified relay for the specified duration.
+        # Turns on the specified relay for the specified duration (in seconds).
         if not (1 <= relay_number <= 8 and 0 <= duration <= 255):
-            raise ValueError("Invalid relay number or duration")
+            raise ValueError("Ungültige Relaisnummer oder Dauer")
 
         # Send command 0x20 (32) with the relay number and duration.
-        command = bytearray([0x20, relay_number])
-        command.append(duration)
-        eth008c._send_command(command)
-
+        command = bytearray([0x20, relay_number])  
+        command.append(duration)  
+        eth008c._send_command(command)  
     def turn_off_relay(self, relay_number, duration=0):
-        # Turns off the specified relay for the given duration.
+        
+        # Turns off the specified relay for the given duration (in seconds).
+        
         if not (1 <= relay_number <= 8 and 0 <= duration <= 255):
             raise ValueError("Invalid relay number or duration")
 
-        # Send command 0x21 (33) with relay number and duration.
-        command = bytearray([0x21, relay_number])
-        command.append(duration)
-        eth008c._send_command(command)
+        # Send command 0x21 (33) with relay number and duration
+        command = bytearray([0x21, relay_number])  
+        command.append(duration)  
+        eth008c._send_command(command)  
+
+if __name__ == "__main__":
+
+    print("ETH008C Relay Controller Example")
+    print("--------------------------------")
+    print("Connecting to relay module...\n")
+
+    eth008c = ETH008C("192.168.0.200", 17494)
+
+    # Retrieve module information
+    module_info = eth008c.get_module_info()
+
+    print(f"Module ID: {module_info[0]}")
+    print(f"Hardware version: {module_info[1]}")
+    print(f"Firmware version: {module_info[2]}")
+    print()
+
+    # Example: control individual relays
+    print("Switching relays...")
+
+    eth008c.relais1 = False
+    eth008c.relais2 = True
+    eth008c.relais3 = False
+    eth008c.relais4 = True
+    eth008c.relais5 = False
+    eth008c.relais6 = True
+    eth008c.relais7 = False
+    eth008c.relais8 = True
+
+    # Example: set all relays at once
+    eth008c.set_all_relays([True, False, True, False, True, False, True, False])
+
+    relay_states = eth008c.get_relay_states()
+    print(f"Relay states: {relay_states}")
+
+    eth008c.close()
+
+    print("\nConnection closed.")
